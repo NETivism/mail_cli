@@ -45,7 +45,7 @@ function drush_mail_cli_send_mail()
     }
 
     if (!$message) {
-        $message .= explode("\n", file_get_contents('php://stdin'));
+        $message = file_get_contents('php://stdin');
     }
 
     drush_print('Sending email. Please wait. This may take a few moments.');
