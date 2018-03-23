@@ -45,8 +45,10 @@ function drush_mail_cli_send_mail()
     }
 
     if (!$message) {
-        $message .= file_get_contents('php://stdin');
+        $message .= explode("\n", file_get_contents('php://stdin'));
     }
+
+    drush_print('Sending email. Please wait. This may take a few moments.');
 
     try {
         $mail = drupal_mail('mail_cli', 'notice', $to, user_preferred_language($user), [
