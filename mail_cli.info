@@ -1,0 +1,3 @@
+name = Mail Cli
+description = Send mail via drush
+core = 7.x

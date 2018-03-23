@@ -1,0 +1,6 @@
+<?php
+/**
+* @file
+* Send mail from the command line using drush.
+*/
+
