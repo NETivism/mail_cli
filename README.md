@@ -28,7 +28,7 @@ drush mail --to=test@example.com --subject="The subject" --message="My message h
 
 Saved emails can be processed using one of the following commands
 ```bash
-# Send a each saved message individually
+# Send each saved message individually
 drush mail-process
 
 # Concatenate all messages into one email per recipient
