@@ -1,0 +1,36 @@
+<?php
+
+/**
+ * The database schema.
+ *
+ * @return array
+ */
+function mail_cli_schema() {
+  $schema = [];
+
+  $schema['mail_cli_messages'] = [
+    'description' => 'Saves messages that are scheduled for processing later',
+    'fields' => [
+      'id' => ['type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE],
+      'mail_object' => ['type' => 'text', 'not null' => TRUE, 'serialize' => true],
+      'created_at' => ['type' => 'int', 'not null' => TRUE],
+    ],
+    'primary key' => [
+      'id',
+    ],
+  ];
+
+  return $schema;
+}
+
+/**
+ * Create mail_cli_messages table to handle scheduled messages.
+ */
+function mail_cli_update_7100() {
+  $schema = mail_cli_schema();
+  $mail_cli_messages = $schema['mail_cli_messages'];
+
+  if(!db_table_exists('mail_cli_messages')) {
+    db_create_table('mail_cli_messages', $mail_cli_messages);
+  }
+}
