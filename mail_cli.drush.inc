@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Implements hook_drush_command.
+ *
+ * @return array
+ */
 function mail_cli_drush_command()
 {
     $commands = [];
@@ -21,6 +26,9 @@ function mail_cli_drush_command()
     return $commands;
 }
 
+/**
+ * Implements drush_HOOK_COMMAND
+ */
 function drush_mail_cli_send_mail()
 {
     global $user;
@@ -58,5 +66,8 @@ function drush_mail_cli_send_mail()
     } catch (Exception $exception) {
         drush_log('An error occurred why sending the email.', 'error');
         drush_log($exception->getMessage(), 'error');
+        return;
     }
+
+    drush_print('Email sent successfully.');
 }
