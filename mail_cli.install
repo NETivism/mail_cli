@@ -12,8 +12,9 @@ function mail_cli_schema() {
     'description' => 'Saves messages that are scheduled for processing later',
     'fields' => [
       'id' => ['type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE],
-      'mail_object' => ['type' => 'text', 'not null' => TRUE, 'serialize' => true],
+      'mail_object' => ['type' => 'text', 'not null' => TRUE],
       'created_at' => ['type' => 'int', 'not null' => TRUE],
+      'processed' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
     ],
     'primary key' => [
       'id',
@@ -24,13 +25,26 @@ function mail_cli_schema() {
 }
 
 /**
+ * Uninstall the module.
+ */
+function mail_cli_uninstall() {
+  $tables = mail_cli_schema();
+
+  foreach ($tables as $table => $schema) {
+    if (db_table_exists($table)) {
+      db_drop_table($table);
+    }
+  }
+}
+
+/**
  * Create mail_cli_messages table to handle scheduled messages.
  */
 function mail_cli_update_7100() {
   $schema = mail_cli_schema();
   $mail_cli_messages = $schema['mail_cli_messages'];
 
-  if(!db_table_exists('mail_cli_messages')) {
+  if (!db_table_exists('mail_cli_messages')) {
     db_create_table('mail_cli_messages', $mail_cli_messages);
   }
 }

@@ -23,7 +23,7 @@ function mail_cli_drush_command() {
     ],
   ];
 
-  $commands['process-mail'] = [
+  $commands['mail-process'] = [
     'description' => 'Send all messages that have been stored for later.',
     'examples' => [
       'drush process-mail' => 'Processes all mail',
@@ -64,16 +64,24 @@ function drush_mail_cli_send_mail() {
     return;
   }
 
-  if (filter_var($to, FILTER_VALIDATE_EMAIL) === FALSE) {
-    drush_log('Please provide a valid recipient\'s email address.', 'error');
-    return;
+  if (strstr($to, ',') !== FALSE) {
+    $to = explode(',', $to);
+  }
+  else {
+    $to = [$to];
+  }
+
+  foreach ($to as $one) {
+    if (filter_var($one, FILTER_VALIDATE_EMAIL) === FALSE) {
+      drush_log("$one is an invalid email address!", 'error');
+      return;
+    }
   }
 
   if (!$message) {
     $message = file_get_contents('php://stdin');
   }
 
-  drush_print('Sending email. Please wait. This may take a few moments.');
 
   try {
     $mail = (new MailCLIMessage())->to($to)
@@ -82,17 +90,17 @@ function drush_mail_cli_send_mail() {
 
     if (drush_get_option('later', FALSE)) {
       $mail->later();
+      drush_log('Email saved and will be sent later.', 'ok');
     }
     else {
+      drush_print('Sending email. Please wait. This may take a few moments.');
       $mail->send();
+      drush_log('Email sent successfully.', 'ok');
     }
   } catch (MailCLIException $exception) {
     drush_log('An error occurred why sending the email.', 'error');
     drush_log($exception->getMessage(), 'error');
-    return;
   }
-
-  drush_print('Email sent successfully.');
 }
 
 /**
@@ -100,20 +108,26 @@ function drush_mail_cli_send_mail() {
  *
  * @throws \Exception
  */
-function drush_mail_cli_process_mail() {
+function drush_mail_cli_mail_process() {
   $mailObjects = db_select('mail_cli_messages', 'MCM')
-    ->fields(['mail_object'])
+    ->fields('MCM', ['id', 'mail_object'])
+    ->condition('processed', 0)
     ->execute()
     ->fetchAll();
 
   foreach ($mailObjects as $mailObject) {
     /** @var \MailCLIMessage $mail */
-    $mail = unserialize($mailObject);
+    $mail = unserialize(base64_decode($mailObject->mailObject));
     try {
       $mail->send();
-      drush_print('Message "' . $mail->getSubject() . '" has been sent to "' . $mail->getTo() . '".');
+      drush_log('Message "' . $mail->getSubject() . '" has been sent to "' . $mail->getTo() . '".', 'ok');
+      db_update('mail_cli_messages')
+        ->fields(['processed' => 1])
+        ->condition('id', $mailObject->id)
+        ->execute();
     } catch (MailCLIException $exception) {
       drush_log($exception->getMessage(), 'error');
+      return;
     }
   }
 }
@@ -125,16 +139,19 @@ function drush_mail_cli_process_mail() {
  */
 function drush_mail_cli_mail_process_concat() {
   $mailObjects = db_select('mail_cli_messages', 'MCM')
-    ->fields(['mail_object', 'created_at'])
+    ->fields('MCM', ['id', 'mail_object', 'created_at'])
+    ->condition('processed', 0)
+    ->execute()
     ->fetchAll();
 
   $messages = [];
+  $ids = [];
 
   drush_print("Preparing messages");
   // Concatenate all messages per recipient.
   foreach ($mailObjects as $mailObject) {
     /** @var \MailCLIMessage $mail */
-    $mail = unserialize($mailObject->mail_object);
+    $mail = unserialize(base64_decode($mailObject->mail_object));
     $time = $mailObject->created_at;
     $recipients = $mail->getTo();
     // For each recipient in the list, add the message to the body.
@@ -143,21 +160,30 @@ function drush_mail_cli_mail_process_concat() {
         $messages[$recipient] = '';
       }
       $messages[$recipient] .= mail_cli_make_concatenated_message($mail, $time);
+      $ids[$recipient][] = $mailObject->id;
     }
   }
+
+  drush_print("Found " . count($messages) . " messages");
 
   // Send all messages
   $date = date('Y-m-d H:i:s');
   foreach ($messages as $recipient => $message) {
-    drush_print("Sending messages to $recipient");
     try {
+      drush_print("Sending messages to $recipient");
       (new MailCLIMessage())
         ->to($recipient)
         ->subject("Concatenated messages $date")
         ->message($message)
         ->send();
+      drush_log("Message to $recipient has been sent successfully", 'ok');
+      db_update('mail_cli_messages')
+        ->fields(['processed' => 1])
+        ->condition('id', $ids[$recipient], 'IN')
+        ->execute();
     } catch (MailCLIException $exception) {
       drush_log($exception->getMessage(), 'error');
+      return;
     }
   }
 }

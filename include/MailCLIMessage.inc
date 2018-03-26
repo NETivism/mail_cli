@@ -105,8 +105,13 @@ class MailCLIMessage {
       $params['from'] = $this->from;
     }
 
-    drupal_mail('mail_cli', 'notice', implode(',', $this->to), user_preferred_language($user), $params);
-    return TRUE;
+    $mail = drupal_mail('mail_cli', 'notice', implode(',', $this->to), user_preferred_language($user), $params);
+
+    if(!$mail['result']) {
+      throw new MailCLIException('Unable to send email. Please see errors above.');
+    }
+
+    return $mail['result'];
   }
 
   /**
@@ -144,7 +149,7 @@ class MailCLIMessage {
     $this->validate();
 
     return db_insert('mail_cli_messages')->fields([
-      'mail_object' => serialize($this),
+      'mail_object' => base64_encode(serialize($this)),
       'created_at' => time(),
     ])->execute();
   }
