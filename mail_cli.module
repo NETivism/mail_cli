@@ -3,12 +3,13 @@
  * @file
  * Send mail from the command line using drush.
  */
+require_once 'include/MailCLIMessage.inc';
+require_once 'include/MailCLIException.inc';
 
 /**
  * Implements hook_mail().
  */
-function mail_cli_mail($key, &$message, $params)
-{
-    $message['subject'] = $params['subject'];
-    $message['body'][] = $params['body'];
+function mail_cli_mail($key, &$message, $params) {
+  $message['subject'] = $params['subject'];
+  $message['body'][] = $params['body'];
 }
