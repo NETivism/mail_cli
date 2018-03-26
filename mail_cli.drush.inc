@@ -82,7 +82,6 @@ function drush_mail_cli_send_mail() {
     $message = file_get_contents('php://stdin');
   }
 
-
   try {
     $mail = (new MailCLIMessage())->to($to)
       ->subject($subject)
